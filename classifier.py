@@ -1,10 +1,11 @@
 ﻿##  Wzorowane na przykładzie Rona Zacharskiego
+from math import sqrt
+
 
 class Classifier:
-
     def __init__(self, filename):
 
-        self.medianAndDeviation = []       
+        self.medianAndDeviation = []
         # reading the data in from the file
         f = open(filename)
         lines = f.readlines()
@@ -29,41 +30,82 @@ class Classifier:
         # now normalize the data
         for i in range(self.vlen):
             self.normalizeColumn(i)
-        
-
-        
 
     def getMedian(self, alist):
-        """TODO: zwraca medianę listy"""
-
-        return 0
-        
+        N = len(alist)
+        ip = 0
+        ik = N - 1
+        m = int(N / 2)
+        while ip < ik:
+            v = alist[m]
+            i = ip
+            j = ik
+            while i <= j:
+                while alist[i] < v:
+                    i += 1
+                while v < alist[j]:
+                    j -= 1
+                if i <= j:
+                    x = alist[i]
+                    alist[i] = alist[j]
+                    alist[j] = x
+                    i += 1
+                    j -= 1
+            if j < m:
+                ip = i
+            if m < i:
+                ik = j
+        if N % 2:
+            return alist[m]
+        else:
+            return float((alist[m] + alist[m - 1]) / 2)
+            # return 0
 
     def getAbsoluteStandardDeviation(self, alist, median):
-        """TODO: zwraca absolutne odchylenie standardowe listy od mediany"""
-        return 0
+        sigma = 0
+        for i in range(len(alist)):
+            sigma += abs(alist[i] - median) / float(len(alist))
+        return sigma
 
     def normalizeColumn(self, columnNumber):
         """TODO: mając dany nr kolumny w self.data, dokonuje normalizacji wg Modified Standard Score"""
 
+        lista1 = [datum[1][columnNumber] for datum in self.data]
+        m = self.getMedian(lista1)
+        od = self.getAbsoluteStandardDeviation(lista1, m)
+        self.medianAndDeviation.append((m,od))
+        for i in range(len(lista1)):
+            self.data[i][1][columnNumber] = (self.data[i][1][columnNumber] - m) / od
         pass
 
+    def normalizeVector(self, v):
+        """Znormalizuj podany wektor mając daną medianę i odchylenie standardowe dla każdej kolumny"""
+        vector = list(v)
+        for i in [0,1]:
+            (median, asd) = self.medianAndDeviation[i]
+            vector[i] = (vector[i] - median) / asd
+        return vector
 
     def manhattan(self, vector1, vector2):
-        """Zwraca odległość Manhattan między dwoma wektorami cech."""
         return sum(map(lambda v1, v2: abs(v1 - v2), vector1, vector2))
-
 
     def nearestNeighbor(self, itemVector):
         """return nearest neighbor to itemVector"""
-        
-        return ((0, ("TODO: Zwróc najbliższego sąsiada", [0], [])))
-    
+        lista1 = [datum[1] for datum in self.data]
+        b = self.manhattan(lista1[0],itemVector)
+        iter = 0
+        for i in range(len(lista1)):
+            a = self.manhattan(lista1[i],itemVector)
+            if a < b:
+                b = a
+                iter = i
+        return ((0, (self.data[iter][0], self.data[iter][1],self.data[iter][2])))
+
     def classify(self, itemVector):
         """Return class we think item Vector is in"""
-        return(self.nearestNeighbor(self.normalizeVector(itemVector))[1][0])
-        
-        
+        return (self.nearestNeighbor(self.normalizeVector(itemVector))[1][0])
+
+
 def testMedianAndASD():
     list1 = [54, 72, 78, 49, 65, 63, 75, 67, 54]
     list2 = [54, 72, 78, 49, 65, 63, 75, 67, 54, 68]
@@ -86,9 +128,9 @@ def testMedianAndASD():
     assert(round(asd2, 3) == 7.5)
     assert(round(asd3, 3) == 0)
     assert(round(asd4, 3) == 1.5)
-    
+
     print("getMedian and getAbsoluteStandardDeviation work correctly")
-    
+
 def testNormalization():
     classifier = Classifier('athletesTrainingSet.txt')
     #
@@ -113,13 +155,13 @@ def testNormalization():
              [-1.2605, -0.8915], [0.7563, 0.0297], [0.7563, 1.4264],
              [0.7563, 1.4264], [-0.4202, 0.0297], [-0.084, -0.0297],
              [0.084, -0.2972], [-0.7563, -0.9212]]
-    
+
 
     for i in range(len(list1)):
         assert(round(classifier.data[i][1][0],4) == list1[i][0])
         assert(round(classifier.data[i][1][1],4) == list1[i][1])
     print("normalizeColumn is OK")
-    
+
 def testClassifier():
     classifier = Classifier('athletesTrainingSet.txt')
     br = ('Basketball', [72, 162], ['Brittainey Raven'])
@@ -146,13 +188,13 @@ def testClassifier():
     # Crystal Langhorne's nearest neighbor is Jennifer Lacy"
     assert(classifier.nearestNeighbor(clNorm)[1][2][0] == "Jennifer Lacy")
     print("Nearest Neighbor fn OK")
-    # Check if classify correctly identifies sports
+    #Check if classify correctly identifies sports
     assert(classifier.classify(br[1]) == 'Basketball')
     assert(classifier.classify(cl[1]) == 'Basketball')
     assert(classifier.classify(nl[1]) == 'Gymnastics')
     print('Classify fn OK')
-    
-    
+
+
 def test(training_filename, test_filename):
     """Test the classifier on a test set of data"""
     classifier = Classifier(training_filename)
@@ -177,15 +219,14 @@ def test(training_filename, test_filename):
             prefix = '+'
         print("%s  %12s  %s" % (prefix, theClass, line))
     print("%4.2f%% correct" % (numCorrect * 100/ len(lines)))
-        
 
-##
-##  Przykłady użycia
-#  test('athletesTrainingSet.txt', 'athletesTestSet.txt')
-#  test("irisTrainingSet.data", "irisTestSet.data")
-#  test("mpgTrainingSet.txt", "mpgTestSet.txt")
+
+#
+#  Przykłady użycia
+test('athletesTrainingSet.txt', 'athletesTestSet.txt')
+# test("irisTrainingSet.data", "irisTestSet.data")
+# test("mpgTrainingSet.txt", "mpgTestSet.txt")
 
 testMedianAndASD()
-# testNormalization()
-# testClassifier()
-
+testNormalization()
+testClassifier()
